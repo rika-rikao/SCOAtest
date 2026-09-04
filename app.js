@@ -2,14 +2,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- 設定 ---
-const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyC1ihCISzvkFNzTnhkr_Nm7OgqL_LRIIKo",
+    authDomain: "scoatest-8402c.firebaseapp.com",
+    projectId: "scoatest-8402c",
+    storageBucket: "scoatest-8402c.firebasestorage.app",
+    messagingSenderId: "372101169652",
+    appId: "1:372101169652:web:216495fd18c8d6a3b779a1",
+    measurementId: "G-YM05ZEJESC"
+  };
 const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY";
 
 const app = initializeApp(firebaseConfig);
@@ -37,11 +38,14 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   }`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
+const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwu8Sg3a9GtryzfvrUhgYOtAokk15t3GvAkvB8PYLW15-a5WietKIr4Jfuuj2MduSBx/exec";
+
+const response = await fetch(GAS_WEBAPP_URL, {
+  method: "POST",
+  // GASのWebアプリへPOSTする場合、no-corsモードにするか、Content-Typeをtext/plainにする必要があります（CORSエラー回避のため）
+  headers: { "Content-Type": "text/plain" },
+  body: JSON.stringify({ prompt: prompt })
+});
     const data = await response.json();
     let jsonText = data.candidates[0].content.parts[0].text;
     // Markdownのコードブロックタグを除去
