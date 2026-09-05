@@ -139,31 +139,111 @@ let timer = null;
 let timeLeft = 30; // 1問30秒
 let userAnswers = []; // ★ ユーザーの回答記録用
 
+// === テスト実行ロジック（IndexedDBオフライン対応版） ===
 window.startTest = async () => {
-    const genre = document.getElementById('prac-genre').value;
-    const limitNum = parseInt(document.getElementById('prac-limit').value);
-    
-    let qQuery = collection(db, "scoa_questions");
-    if (genre !== "all") {
-        qQuery = query(qQuery, where("genre", "==", genre));
-    }
-    
-    const snapshot = await getDocs(qQuery);
-    let allQ = [];
-    snapshot.forEach(doc => allQ.push(doc.data()));
+    try {
+        const selectedGenre = document.getElementById('prac-genre').value;
+        const limitNum = parseInt(document.getElementById('prac-limit').value) || 10;
+        
+        let allQ = [];
+        let isOfflineMode = false;
 
-    if (allQ.length === 0) {
-        return alert("このジャンルの問題がまだFirebaseにありません。先に生成してください。");
-    }
+        // 1. まずオンラインでFirestoreから最新取得を試みる
+        try {
+            const snapshot = await getDocs(collection(db, "scoa_questions"));
+            snapshot.forEach(doc => allQ.push(doc.data()));
 
-    allQ.sort(() => Math.random() - 0.5);
-    testQuestions = allQ.slice(0, limitNum);
-    
-    currentIndex = 0;
-    score = 0;
-    userAnswers = []; // 回答ログをリセット
-    navigate('test');
-    showQuestion();
+            if (allQ.length > 0) {
+                // 裏で IndexedDB に全問バックアップ保存
+                saveToIndexedDB(allQ).catch(err => console.warn("IndexedDB保存失敗:", err));
+            }
+        } catch (netErr) {
+            console.warn("Firestore通信失敗。オフラインDBを検索します...", netErr);
+            isOfflineMode = true;
+        }
+
+        // 2. 通信失敗または全問0件の場合、IndexedDBから復元
+        if (allQ.length === 0) {
+            allQ = await loadFromIndexedDB();
+            isOfflineMode = true;
+        }
+
+        // 3. それでも0件なら（一度もネットで取得したことがない場合）
+        if (allQ.length === 0) {
+            return alert("問題データがありません。\n初回はオンラインの状態で問題を生成または読み込んでください。");
+        }
+
+        if (isOfflineMode) {
+            console.log("【オフラインモード】IndexedDBのキャッシュデータから出題します。");
+        }
+
+        // ジャンルのあいまいフィルタリング
+        let filteredQ = allQ;
+        if (selectedGenre !== "all") {
+            filteredQ = allQ.filter(q => {
+                const g = q.genre || "";
+                return g.includes(selectedGenre) || (selectedGenre === "数理" && g.includes("数学")) || (selectedGenre === "言語" && g.includes("国語"));
+            });
+        }
+
+        if (filteredQ.length === 0) {
+            const savedGenres = [...new Set(allQ.map(q => q.genre))].join(', ');
+            return alert(`「${selectedGenre}」に一致する問題がありませんでした。\n\n【現在保存されているジャンル】\n${savedGenres || 'なし'}`);
+        }
+
+        filteredQ.sort(() => Math.random() - 0.5);
+        testQuestions = filteredQ.slice(0, limitNum);
+        
+        currentIndex = 0;
+        score = 0;
+        userAnswers = [];
+        window.navigate('test');
+        showQuestion();
+
+    } catch (e) {
+        console.error("テスト開始エラー:", e);
+        alert("テストの開始に失敗しました:\n" + e.message);
+    }
+};
+
+// === IndexedDB ヘルパー関数群 ===
+const IDB_NAME = 'SCOA_Offline_DB';
+const IDB_STORE = 'cached_questions';
+
+function openOfflineDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+            const idb = e.target.result;
+            if (!idb.objectStoreNames.contains(IDB_STORE)) {
+                idb.createObjectStore(IDB_STORE, { autoIncrement: true });
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// 取得した全問題をIndexedDBに上書き保存
+async function saveToIndexedDB(questions) {
+    const idb = await openOfflineDB();
+    const tx = idb.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    store.clear(); // 既存キャッシュをリフレッシュ
+    questions.forEach(q => store.add(q));
+    return new Promise(res => tx.oncomplete = res);
+}
+
+// IndexedDBから全問題を読み出し
+async function loadFromIndexedDB() {
+    const idb = await openOfflineDB();
+    const tx = idb.transaction(IDB_STORE, 'readonly');
+    const store = tx.objectStore(IDB_STORE);
+    return new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
 };
 
 function showQuestion() {
