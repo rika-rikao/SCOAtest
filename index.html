@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCOA Master - 適性検査対策アプリ</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>SCOA Master</h1>
+            <nav>
+                <button onclick="navigate('home')">ホーム</button>
+                <button onclick="navigate('generate')">問題生成</button>
+                <button onclick="navigate('practice')">対策テスト</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- ホーム画面 -->
+            <section id="screen-home" class="screen active">
+                <h2>SCOA対策アプリへようこそ</h2>
+                <p>Gemini APIを使って本番に近い問題を生成し、実践形式でテストを行うことができます。</p>
+                <div class="settings">
+                    <label>Gemini API Key (ブラウザに保存されます):</label>
+                    <input type="password" id="api-key-input" placeholder="AIzaSy...">
+                    <button onclick="saveApiKey()">保存</button>
+                </div>
+            </section>
+
+            <!-- 問題生成画面 -->
+            <section id="screen-generate" class="screen">
+                <h2>問題の自動生成 (Gemini API)</h2>
+                <div class="form-group">
+                    <label>ジャンル:</label>
+                    <select id="gen-genre">
+                        <option value="言語">言語 (国語)</option>
+                        <option value="数理">数理 (数学)</option>
+                        <option value="論理">論理</option>
+                        <option value="英語">英語</option>
+                        <option value="常識">常識 (理科・社会)</option>
+                    </select>
+                    <button onclick="generateQuestion()" id="gen-btn">問題を生成する</button>
+                </div>
+                <div id="gen-result" class="hidden">
+                    <p><strong>問題:</strong> <span id="preview-q"></span></p>
+                    <p><strong>正解:</strong> <span id="preview-correct"></span></p>
+                    <p><strong>誤答リスト(10個):</strong> <span id="preview-incorrect"></span></p>
+                    <button onclick="saveQuestionToFirebase()">Firebaseに保存</button>
+                </div>
+            </section>
+
+            <!-- 対策テスト設定画面 -->
+            <section id="screen-practice" class="screen">
+                <h2>SCOA 実践テスト</h2>
+                <p>SCOAはスピードが命です。問題を選択してテストを開始します。</p>
+                <div class="form-group">
+                    <label>出題ジャンル:</label>
+                    <select id="prac-genre">
+                        <option value="all">全ジャンル (本番形式)</option>
+                        <option value="言語">言語</option>
+                        <option value="数理">数理</option>
+                        <option value="論理">論理</option>
+                        <option value="英語">英語</option>
+                        <option value="常識">常識</option>
+                    </select>
+                    <label>出題数:</label>
+                    <input type="number" id="prac-limit" value="10" min="1" max="120">
+                    <button onclick="startTest()">テスト開始 (1問30秒制限)</button>
+                </div>
+            </section>
+
+            <!-- テスト実行画面 -->
+            <section id="screen-test" class="screen">
+                <div class="test-header">
+                    <span id="test-progress">1 / 10</span>
+                    <span id="test-timer" class="timer">残り: 30秒</span>
+                </div>
+                <div class="question-box">
+                    <span class="genre-badge" id="test-genre">ジャンル</span>
+                    <p id="test-question-text">問題文がここに入ります</p>
+                    <div id="test-options" class="options-container">
+                        <!-- 選択肢がJSで生成されます -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 結果画面 -->
+            <section id="screen-result" class="screen">
+                <h2>テスト終了！</h2>
+                <p class="score-display">正答率: <span id="result-score">0</span> / <span id="result-total">0</span></p>
+                <button onclick="navigate('practice')">もう一度プレイ</button>
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase SDK (Modular) -->
+    <script type="module" src="app.js"></script>
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(() => {
+                console.log('Service Worker Registered');
+            });
+        }
+    </script>
+</body>
+</html>
