@@ -64,7 +64,7 @@ window.generateBulkQuestions = async () => {
         const currentBatch = Math.min(batchSize, totalNum - i);
         btn.innerText = `生成＆保存中... (${successCount}/${totalNum})`;
 
-        const prompt = `あなたは就職試験(SCOA)のプロ作成者です。ジャンル「${genre}」の対策問題を ${currentBatch}問 作成してください。
+        const prompt = `あなたは就職試験(SCOA)のプロ作成者です。ジャンル「${genre}」の対策問題を ${currentBatch}問 作成してください。存在しない熟語や歴史、条約などを創作してはいけません。必ず事実に基づいたもので作成してください。
         必ず以下のJSON配列(Array)形式で出力し、マークダウンや前後の挨拶などの文章は一切含めないでください。
         [
           {
@@ -104,7 +104,7 @@ window.generateBulkQuestions = async () => {
             logText.innerText = `進捗: ${successCount} / ${totalNum} 問 保存完了...\n使用モデル: ${selectedModel}\n(※API制限を避けるため数秒待機中)`;
 
             if (successCount < totalNum) {
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
 
         } catch (e) {
