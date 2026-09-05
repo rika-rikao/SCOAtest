@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCOA Master - 適性検査対策アプリ</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
@@ -88,18 +88,13 @@
                     <span id="test-progress">1 / 10</span>
                     <span id="test-timer" class="timer">残り: 30秒</span>
                 </div>
-                
-    <!-- ▼▼▼ ここを左右分割に対応できる構造に変更 ▼▼▼ -->
-    <div class="test-body">
-        <div class="question-area">
-            <span class="genre-badge" id="test-genre">ジャンル</span>
-            <p id="test-question-text">問題文がここに入ります</p>
-        </div>
-        <div id="test-options" class="options-container">
-            <!-- 選択肢がJSで生成されます -->
-        </div>
-    </div>
-</section>
+                <div class="question-box">
+                    <span class="genre-badge" id="test-genre">ジャンル</span>
+                    <p id="test-question-text">問題文がここに入ります</p>
+                    <div id="test-options" class="options-container">
+                        <!-- 選択肢がJSで生成されます -->
+                    </div>
+                </div>
             </section>
 
             <!-- 結果画面 -->
