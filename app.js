@@ -44,6 +44,9 @@ window.generateBulkQuestions = async () => {
     const genre = document.getElementById('gen-genre').value;
     const totalNum = parseInt(document.getElementById('gen-count').value);
     
+    // ★ 画面から選択されたモデル名を取得 ★
+    const selectedModel = document.getElementById('gen-model').value;
+    
     if (totalNum < 1 || totalNum > 100) return alert("生成数は1〜100の間で指定してください。");
 
     const btn = document.getElementById('gen-btn');
@@ -52,16 +55,15 @@ window.generateBulkQuestions = async () => {
     
     btn.disabled = true;
     logArea.classList.remove('hidden');
-    logText.innerText = `生成を開始します... (目標: ${totalNum}問)\n※数分かかる場合があります。この画面を閉じないでください。`;
+    logText.innerText = `生成を開始します... (目標: ${totalNum}問)\n使用モデル: ${selectedModel}\n※数分かかる場合があります。この画面を閉じないでください。`;
 
     let successCount = 0;
-    const batchSize = 5; // 1回のお願いで作らせる数（多すぎるとAIが途切れるため5問ずつ）
+    const batchSize = 5; // 1回のお願いで作らせる数
 
     for (let i = 0; i < totalNum; i += batchSize) {
         const currentBatch = Math.min(batchSize, totalNum - i);
         btn.innerText = `生成＆保存中... (${successCount}/${totalNum})`;
 
-        // AIへのお願い（複数問を配列[ ]で返すように指示）
         const prompt = `あなたは就職試験(SCOA)のプロ作成者です。ジャンル「${genre}」の対策問題を ${currentBatch}問 作成してください。
         必ず以下のJSON配列(Array)形式で出力し、マークダウンや前後の挨拶などの文章は一切含めないでください。
         [
@@ -69,13 +71,13 @@ window.generateBulkQuestions = async () => {
             "genre": "${genre}",
             "question": "問題文",
             "correct": "正解の選択肢",
-            "incorrect": ["誤答1", "誤答2", "誤答3", "誤答4", "誤答5", "誤答6", "誤答7", "誤答8", "誤答9", "誤答10"]
+            "incorrect": ["誤答1", "誤答2", "誤答3", "誤答4", "誤答5", "誤答6", "誤答7", "誤答8", "最新の誤答9", "誤答10"]
           }
         ]`;
 
         try {
-            // 安定している 3.8-flash を利用（もし503が出るなら 1.5-flash に変更してください）
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
+            // ★ URLの部分を selectedModel 変数に置き換え ★
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -92,26 +94,23 @@ window.generateBulkQuestions = async () => {
             let rawText = data.candidates[0].content.parts[0].text;
             rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
             
-            // JSON配列としてパース
             const questions = JSON.parse(rawText);
 
-            // 生成できた問題を1つずつFirebaseに自動保存
             for (const q of questions) {
                 await addDoc(collection(db, "scoa_questions"), q);
                 successCount++;
             }
 
-            logText.innerText = `進捗: ${successCount} / ${totalNum} 問 保存完了...\n(※API制限を避けるため、意図的に数秒待機しながら進めています)`;
+            logText.innerText = `進捗: ${successCount} / ${totalNum} 問 保存完了...\n使用モデル: ${selectedModel}\n(※API制限を避けるため数秒待機中)`;
 
-            // APIの連続アクセス制限（429エラー）を避けるため、1回終わるごとに3秒休む
             if (successCount < totalNum) {
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
 
         } catch (e) {
             console.error("詳細なエラー:", e);
-            logText.innerText += `\n\n⚠️ エラーが発生したため ${successCount}問 で中断しました。\n詳細: ${e.message}\n(※混雑によるエラーの場合は、時間を置いて再度続きを生成してください)`;
-            break; // エラーが起きたらループを抜ける
+            logText.innerText += `\n\n⚠️ エラーが発生したため ${successCount}問 で中断しました。\n詳細: ${e.message}\n(※混雑によるエラーの場合はモデルを変更して再度お試しください)`;
+            break; 
         }
     }
 
@@ -119,7 +118,6 @@ window.generateBulkQuestions = async () => {
     btn.disabled = false;
     alert(`${successCount}問の生成とFirebaseへの保存が完了しました！\n対策テスト画面からプレイできます。`);
 };
-
 window.saveQuestionToFirebase = async () => {
     if (!pendingQuestion) return;
     try {
