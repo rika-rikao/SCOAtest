@@ -58,7 +58,7 @@ window.generateBulkQuestions = async () => {
     logText.innerText = `生成を開始します... (目標: ${totalNum}問)\n使用モデル: ${selectedModel}\n※数分かかる場合があります。この画面を閉じないでください。`;
 
     let successCount = 0;
-    const batchSize = 5; // 1回のお願いで作らせる数
+    const batchSize = 20; // 1回のお願いで作らせる数
 
     for (let i = 0; i < totalNum; i += batchSize) {
         const currentBatch = Math.min(batchSize, totalNum - i);
