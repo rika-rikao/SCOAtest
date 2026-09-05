@@ -61,6 +61,11 @@ window.generateQuestion = async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
+
+        if (!response.ok) {
+            throw new Error(`APIエラー (${response.status}): APIキーが間違っているか、モデルが利用できません`);
+        }
+      
         const data = await response.json();
         let rawText = data.candidates[0].content.parts[0].text;
         
