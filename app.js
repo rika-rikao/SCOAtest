@@ -137,6 +137,7 @@ let currentIndex = 0;
 let score = 0;
 let timer = null;
 let timeLeft = 30; // 1問30秒
+let userAnswers = []; // ★ ユーザーの回答記録用
 
 window.startTest = async () => {
     const genre = document.getElementById('prac-genre').value;
@@ -160,6 +161,7 @@ window.startTest = async () => {
     
     currentIndex = 0;
     score = 0;
+    userAnswers = []; // 回答ログをリセット
     navigate('test');
     showQuestion();
 };
@@ -186,7 +188,8 @@ function showQuestion() {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.innerText = opt;
-        btn.onclick = () => answerQuestion(opt === q.correct);
+        // ★ 押した選択肢と正誤判定を渡す
+        btn.onclick = () => answerQuestion(opt, opt === q.correct);
         optionsContainer.appendChild(btn);
     });
 
@@ -202,13 +205,25 @@ function startTimer() {
         document.getElementById('test-timer').innerText = `残り: ${timeLeft}秒`;
         if (timeLeft <= 0) {
             clearInterval(timer);
-            answerQuestion(false);
+            // ★ 時間切れ時は「時間切れ」として記録
+            answerQuestion("（時間切れ）", false);
         }
     }, 1000);
 }
 
-function answerQuestion(isCorrect) {
+function answerQuestion(selectedOpt, isCorrect) {
     clearInterval(timer);
+    
+    const currentQ = testQuestions[currentIndex];
+    // 回答データを記録
+    userAnswers.push({
+        question: currentQ.question,
+        genre: currentQ.genre,
+        selected: selectedOpt,
+        correct: currentQ.correct,
+        isCorrect: isCorrect
+    });
+
     if (isCorrect) score++;
     currentIndex++;
     showQuestion();
@@ -217,5 +232,28 @@ function answerQuestion(isCorrect) {
 function endTest() {
     document.getElementById('result-score').innerText = score;
     document.getElementById('result-total').innerText = testQuestions.length;
+
+    // ★ 間違えた問題（ミス）の表示処理
+    const reviewContainer = document.getElementById('result-review');
+    reviewContainer.innerHTML = '';
+
+    const wrongAnswers = userAnswers.filter(a => !a.isCorrect);
+
+    if (wrongAnswers.length === 0) {
+        reviewContainer.innerHTML = '<p class="perfect-msg">🎉 全問正解です！パーフェクト！</p>';
+    } else {
+        let html = `<h3>❌ 間違えた問題の復習 (${wrongAnswers.length}問)</h3>`;
+        wrongAnswers.forEach((item, index) => {
+            html += `
+            <div class="review-card">
+                <p class="review-q"><strong>[${item.genre}]</strong> ${item.question}</p>
+                <p class="review-your-ans">あなたの回答: <span class="wrong-text">❌ ${item.selected}</span></p>
+                <p class="review-correct-ans">正解: <span class="correct-text">⭕ ${item.correct}</span></p>
+            </div>
+            `;
+        });
+        reviewContainer.innerHTML = html;
+    }
+
     navigate('result');
 }
