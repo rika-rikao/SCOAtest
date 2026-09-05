@@ -36,6 +36,9 @@ window.onload = () => {
 // === 問題生成 (Gemini API) ===
 let pendingQuestion = null;
 
+// === 問題生成 (Gemini API) ===
+let pendingQuestion = null;
+
 window.generateQuestion = async () => {
     const apiKey = localStorage.getItem('gemini_api_key');
     if (!apiKey) return alert("API Keyが設定されていません。ホーム画面で設定してください。");
@@ -56,35 +59,50 @@ window.generateQuestion = async () => {
     }`;
 
     try {
+        // ★ ここを gemini-3.8-flash に変更しています ★
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
-
+        
+        // ★ エラーの詳細をキャッチするための追加処理 ★
         if (!response.ok) {
-            throw new Error(`APIエラー (${response.status}): APIキーが間違っているか、モデルが利用できません`);
+            const errorData = await response.json();
+            console.error("API Error:", errorData);
+            throw new Error(`API通信エラー: ${response.status} ${response.statusText}\n${errorData.error?.message || '不明なエラー'}`);
         }
-      
+
         const data = await response.json();
+        
+        // AIの回答が空だった場合のガード
+        if (!data.candidates || data.candidates.length === 0) {
+            throw new Error("AIが回答を生成しませんでした（ブロックされた可能性があります）。");
+        }
+
         let rawText = data.candidates[0].content.parts[0].text;
         
-        // Markdownブロックを取り除く処理
-        rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-        pendingQuestion = JSON.parse(rawText);
+        // Markdownブロックや前後の空白を取り除く処理
+        rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        
+        // JSONの読み込みテスト
+        try {
+            pendingQuestion = JSON.parse(rawText);
+        } catch (jsonError) {
+            console.error("生データ:", rawText);
+            throw new Error("AIが指定したJSON形式で回答しませんでした。もう一度お試しください。");
+        }
 
+        // 画面にプレビューを表示
         document.getElementById('preview-q').innerText = pendingQuestion.question;
         document.getElementById('preview-correct').innerText = pendingQuestion.correct;
         document.getElementById('preview-incorrect').innerText = pendingQuestion.incorrect.join(', ');
         document.getElementById('gen-result').classList.remove('hidden');
 
-} catch (e) {
+    } catch (e) {
         console.error("詳細なエラー:", e);
-        if (e.message.includes("JSON")) {
-            alert("AIが不正な形式で回答しました。もう一度「生成する」を押してください。\n詳細: " + e.message);
-        } else {
-            alert("通信またはAPIのエラーが発生しました。\n詳細: " + e.message + "\n\n※F12キーを押してコンソール(Console)を確認してください。");
-        }
+        // エラー内容をアラートで具体的に表示
+        alert(`生成に失敗しました。\n\n【原因】\n${e.message}\n\n※F12キーを押してConsoleタブも確認してください。`);
     } finally {
         btn.innerText = "問題を生成する";
         btn.disabled = false;
