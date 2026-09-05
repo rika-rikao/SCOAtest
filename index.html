@@ -42,6 +42,14 @@
                         <option value="英語">英語</option>
                         <option value="常識">常識 (理科・社会)</option>
                     </select>
+
+                    <label>使用するモデル:</label>
+                    <select id="gen-model">
+                        <option value="gemini-3.6-flash">gemini-3.6-flash (安定・高速)</option>
+                        <option value="gemini-3.7-flash">gemini-3.7-flash (標準)</option>
+                        <option value="gemini-3.8-flash" selected>gemini-3.8-flash (最新)</option>
+                        <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (高精度・プレビュー)</option>
+                    </select>
                     
                     <label>生成する問題数 (1〜100):</label>
                     <input type="number" id="gen-count" value="10" min="1" max="100">
