@@ -30,7 +30,7 @@
                 </div>
             </section>
 
-<!-- 問題生成画面 -->
+            <!-- 問題生成画面 -->
             <section id="screen-generate" class="screen">
                 <h2>問題の自動生成 (Gemini API)</h2>
                 <div class="form-group">
@@ -45,10 +45,10 @@
 
                     <label>使用するモデル:</label>
                     <select id="gen-model">
-                        <option value="gemini-3.6-flash">gemini-3.6-flash (安定・高速)</option>
-                        <option value="gemini-3.7-flash">gemini-3.7-flash (標準)</option>
-                        <option value="gemini-3.8-flash" selected>gemini-3.8-flash (最新)</option>
-                        <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (高精度・プレビュー)</option>
+                        <option value="gemini-3.6-flash">gemini-3.6-flash (高速・おすすめ)</option>
+                        <option value="gemini-3.7-flash">gemini-3.7-flash</option>
+                        <option value="gemini-3.8-flash">gemini-3.8-flash (最新)</option>
+                        <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (高精度)</option>
                     </select>
                     
                     <label>生成する問題数 (1〜100):</label>
@@ -59,6 +59,26 @@
                 
                 <div id="gen-result" class="hidden">
                     <p style="white-space: pre-line; font-weight: bold; color: var(--primary-color);" id="gen-log"></p>
+                </div>
+            </section>
+
+            <!-- 対策テスト設定画面 -->
+            <section id="screen-practice" class="screen">
+                <h2>SCOA 実践テスト</h2>
+                <p>SCOAはスピードが命です。問題を選択してテストを開始します。</p>
+                <div class="form-group">
+                    <label>出題ジャンル:</label>
+                    <select id="prac-genre">
+                        <option value="all">全ジャンル (本番形式)</option>
+                        <option value="言語">言語</option>
+                        <option value="数理">数理</option>
+                        <option value="論理">論理</option>
+                        <option value="英語">英語</option>
+                        <option value="常識">常識</option>
+                    </select>
+                    <label>出題数:</label>
+                    <input type="number" id="prac-limit" value="10" min="1" max="120">
+                    <button onclick="startTest()">テスト開始 (1問30秒制限)</button>
                 </div>
             </section>
 
@@ -77,24 +97,20 @@
                 </div>
             </section>
 
-<!-- 結果画面 -->
+            <!-- 結果画面 -->
             <section id="screen-result" class="screen">
                 <h2>テスト終了！</h2>
                 <p class="score-display">正答率: <span id="result-score">0</span> / <span id="result-total">0</span></p>
                 
-                <!-- ▼▼▼ 復習エリアを追加 ▼▼▼ -->
                 <div id="result-review" class="review-container"></div>
-                <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
 
                 <button onclick="navigate('practice')">もう一度プレイ</button>
             </section>
         </main>
     </div>
 
-    <!-- Firebase SDK (Modular) -->
     <script type="module" src="app.js"></script>
     <script>
-        // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(() => {
                 console.log('Service Worker Registered');
