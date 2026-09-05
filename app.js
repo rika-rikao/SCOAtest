@@ -73,9 +73,13 @@ window.generateQuestion = async () => {
         document.getElementById('preview-incorrect').innerText = pendingQuestion.incorrect.join(', ');
         document.getElementById('gen-result').classList.remove('hidden');
 
-    } catch (e) {
-        console.error(e);
-        alert("生成に失敗しました。API Keyや制限を確認してください。");
+} catch (e) {
+        console.error("詳細なエラー:", e);
+        if (e.message.includes("JSON")) {
+            alert("AIが不正な形式で回答しました。もう一度「生成する」を押してください。\n詳細: " + e.message);
+        } else {
+            alert("通信またはAPIのエラーが発生しました。\n詳細: " + e.message + "\n\n※F12キーを押してコンソール(Console)を確認してください。");
+        }
     } finally {
         btn.innerText = "問題を生成する";
         btn.disabled = false;
