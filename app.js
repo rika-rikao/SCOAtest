@@ -257,3 +257,27 @@ function endTest() {
 
     navigate('result');
 }
+
+// === デバイス判定 & 画面回転の監視 ===
+function checkDeviceAndOrientation() {
+    // タッチ端末（スマホ・タブレット）かどうかを判定
+    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+
+    if (isMobileOrTablet) {
+        document.body.classList.add('is-mobile');
+    }
+
+    // 画面回転（縦/横）のログ
+    const orientation = window.matchMedia('(orientation: portrait)').matches ? '縦画面 (Portrait)' : '横画面 (Landscape)';
+    console.log(`デバイス: ${isMobileOrTablet ? 'モバイル/タブレット' : 'PC'}, 方向: ${orientation}`);
+}
+
+// 起動時チェック
+window.addEventListener('DOMContentLoaded', checkDeviceAndOrientation);
+
+// 画面回転・サイズ変更の検知
+window.addEventListener('resize', checkDeviceAndOrientation);
+if (screen.orientation) {
+    screen.orientation.addEventListener('change', checkDeviceAndOrientation);
+}
