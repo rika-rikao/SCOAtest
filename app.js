@@ -36,69 +36,88 @@ window.onload = () => {
 // === 問題生成 (Gemini API) ===
 let pendingQuestion = null;
 
-window.generateQuestion = async () => {
+// === 問題の一括生成＆保存 (Gemini API) ===
+window.generateBulkQuestions = async () => {
     const apiKey = localStorage.getItem('gemini_api_key');
     if (!apiKey) return alert("API Keyが設定されていません。ホーム画面で設定してください。");
 
     const genre = document.getElementById('gen-genre').value;
+    const totalNum = parseInt(document.getElementById('gen-count').value);
+    
+    if (totalNum < 1 || totalNum > 100) return alert("生成数は1〜100の間で指定してください。");
+
     const btn = document.getElementById('gen-btn');
-    btn.innerText = "生成中...";
+    const logArea = document.getElementById('gen-result');
+    const logText = document.getElementById('gen-log');
+    
     btn.disabled = true;
+    logArea.classList.remove('hidden');
+    logText.innerText = `生成を開始します... (目標: ${totalNum}問)\n※数分かかる場合があります。この画面を閉じないでください。`;
 
-    const prompt = `あなたは就職試験(SCOA)のプロ作成者です。ジャンル「${genre}」の対策問題を1問作成してください。
-    実際のSCOAのように、少し思考力が必要な問題にしてください。
-    必ず以下のJSON形式で出力し、マークダウンやJSON以外の文章は一切含めないでください。
-    {
-      "genre": "${genre}",
-      "question": "問題文",
-      "correct": "正解の選択肢",
-      "incorrect": ["誤答1", "誤答2", "誤答3", "誤答4", "誤答5", "誤答6", "誤答7", "誤答8", "誤答9", "誤答10"]
-    }`;
+    let successCount = 0;
+    const batchSize = 5; // 1回のお願いで作らせる数（多すぎるとAIが途切れるため5問ずつ）
 
-    try {
-        // ★ 最新モデル gemini-3.8-flash を指定 ★
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("API Error:", errorData);
-            throw new Error(`API通信エラー: ${response.status} ${response.statusText}\n${errorData.error?.message || '不明なエラー'}`);
-        }
+    for (let i = 0; i < totalNum; i += batchSize) {
+        const currentBatch = Math.min(batchSize, totalNum - i);
+        btn.innerText = `生成＆保存中... (${successCount}/${totalNum})`;
 
-        const data = await response.json();
-        
-        if (!data.candidates || data.candidates.length === 0) {
-            throw new Error("AIが回答を生成しませんでした（ブロックされた可能性があります）。");
-        }
+        // AIへのお願い（複数問を配列[ ]で返すように指示）
+        const prompt = `あなたは就職試験(SCOA)のプロ作成者です。ジャンル「${genre}」の対策問題を ${currentBatch}問 作成してください。
+        必ず以下のJSON配列(Array)形式で出力し、マークダウンや前後の挨拶などの文章は一切含めないでください。
+        [
+          {
+            "genre": "${genre}",
+            "question": "問題文",
+            "correct": "正解の選択肢",
+            "incorrect": ["誤答1", "誤答2", "誤答3", "誤答4", "誤答5", "誤答6", "誤答7", "誤答8", "誤答9", "誤答10"]
+          }
+        ]`;
 
-        let rawText = data.candidates[0].content.parts[0].text;
-        
-        // Markdownブロックや前後の空白を取り除く処理
-        rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-        
         try {
-            pendingQuestion = JSON.parse(rawText);
-        } catch (jsonError) {
-            console.error("生データ:", rawText);
-            throw new Error("AIが指定したJSON形式で回答しませんでした。もう一度お試しください。");
+            // 安定している 3.8-flash を利用（もし503が出るなら 1.5-flash に変更してください）
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+            
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(`API通信エラー: ${response.status}\n${err.error?.message || ''}`);
+            }
+
+            const data = await response.json();
+            if (!data.candidates) throw new Error("AIが回答を生成しませんでした。");
+
+            let rawText = data.candidates[0].content.parts[0].text;
+            rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+            
+            // JSON配列としてパース
+            const questions = JSON.parse(rawText);
+
+            // 生成できた問題を1つずつFirebaseに自動保存
+            for (const q of questions) {
+                await addDoc(collection(db, "scoa_questions"), q);
+                successCount++;
+            }
+
+            logText.innerText = `進捗: ${successCount} / ${totalNum} 問 保存完了...\n(※API制限を避けるため、意図的に数秒待機しながら進めています)`;
+
+            // APIの連続アクセス制限（429エラー）を避けるため、1回終わるごとに3秒休む
+            if (successCount < totalNum) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
+        } catch (e) {
+            console.error("詳細なエラー:", e);
+            logText.innerText += `\n\n⚠️ エラーが発生したため ${successCount}問 で中断しました。\n詳細: ${e.message}\n(※混雑によるエラーの場合は、時間を置いて再度続きを生成してください)`;
+            break; // エラーが起きたらループを抜ける
         }
-
-        document.getElementById('preview-q').innerText = pendingQuestion.question;
-        document.getElementById('preview-correct').innerText = pendingQuestion.correct;
-        document.getElementById('preview-incorrect').innerText = pendingQuestion.incorrect.join(', ');
-        document.getElementById('gen-result').classList.remove('hidden');
-
-    } catch (e) {
-        console.error("詳細なエラー:", e);
-        alert(`生成に失敗しました。\n\n【原因】\n${e.message}\n\n※F12キーを押してConsoleタブも確認してください。`);
-    } finally {
-        btn.innerText = "問題を生成する";
-        btn.disabled = false;
     }
+
+    btn.innerText = "一括生成して保存する";
+    btn.disabled = false;
+    alert(`${successCount}問の生成とFirebaseへの保存が完了しました！\n対策テスト画面からプレイできます。`);
 };
 
 window.saveQuestionToFirebase = async () => {
