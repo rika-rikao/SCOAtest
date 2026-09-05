@@ -36,9 +36,6 @@ window.onload = () => {
 // === 問題生成 (Gemini API) ===
 let pendingQuestion = null;
 
-// === 問題生成 (Gemini API) ===
-let pendingQuestion = null;
-
 window.generateQuestion = async () => {
     const apiKey = localStorage.getItem('gemini_api_key');
     if (!apiKey) return alert("API Keyが設定されていません。ホーム画面で設定してください。");
@@ -59,14 +56,13 @@ window.generateQuestion = async () => {
     }`;
 
     try {
-        // ★ ここを gemini-3.8-flash に変更しています ★
+        // ★ 最新モデル gemini-3.8-flash を指定 ★
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
         
-        // ★ エラーの詳細をキャッチするための追加処理 ★
         if (!response.ok) {
             const errorData = await response.json();
             console.error("API Error:", errorData);
@@ -75,7 +71,6 @@ window.generateQuestion = async () => {
 
         const data = await response.json();
         
-        // AIの回答が空だった場合のガード
         if (!data.candidates || data.candidates.length === 0) {
             throw new Error("AIが回答を生成しませんでした（ブロックされた可能性があります）。");
         }
@@ -85,7 +80,6 @@ window.generateQuestion = async () => {
         // Markdownブロックや前後の空白を取り除く処理
         rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
         
-        // JSONの読み込みテスト
         try {
             pendingQuestion = JSON.parse(rawText);
         } catch (jsonError) {
@@ -93,7 +87,6 @@ window.generateQuestion = async () => {
             throw new Error("AIが指定したJSON形式で回答しませんでした。もう一度お試しください。");
         }
 
-        // 画面にプレビューを表示
         document.getElementById('preview-q').innerText = pendingQuestion.question;
         document.getElementById('preview-correct').innerText = pendingQuestion.correct;
         document.getElementById('preview-incorrect').innerText = pendingQuestion.incorrect.join(', ');
@@ -101,7 +94,6 @@ window.generateQuestion = async () => {
 
     } catch (e) {
         console.error("詳細なエラー:", e);
-        // エラー内容をアラートで具体的に表示
         alert(`生成に失敗しました。\n\n【原因】\n${e.message}\n\n※F12キーを押してConsoleタブも確認してください。`);
     } finally {
         btn.innerText = "問題を生成する";
@@ -133,7 +125,6 @@ window.startTest = async () => {
     const genre = document.getElementById('prac-genre').value;
     const limitNum = parseInt(document.getElementById('prac-limit').value);
     
-    // Firestoreから取得 (本番アプリならサーバー側でランダム取得する工夫が必要ですが、SPA向けに全件orクエリ取得)
     let qQuery = collection(db, "scoa_questions");
     if (genre !== "all") {
         qQuery = query(qQuery, where("genre", "==", genre));
@@ -147,7 +138,6 @@ window.startTest = async () => {
         return alert("このジャンルの問題がまだFirebaseにありません。先に生成してください。");
     }
 
-    // シャッフルして指定数抽出
     allQ.sort(() => Math.random() - 0.5);
     testQuestions = allQ.slice(0, limitNum);
     
@@ -168,11 +158,10 @@ function showQuestion() {
     document.getElementById('test-genre').innerText = q.genre;
     document.getElementById('test-question-text').innerText = q.question;
 
-    // 選択肢の生成 (正解1 + 誤答4 = 計5択。SCOAの標準)
     let options = [q.correct];
     let shuffledIncorrect = [...q.incorrect].sort(() => Math.random() - 0.5).slice(0, 4);
     options = options.concat(shuffledIncorrect);
-    options.sort(() => Math.random() - 0.5); // 選択肢をシャッフル
+    options.sort(() => Math.random() - 0.5);
 
     const optionsContainer = document.getElementById('test-options');
     optionsContainer.innerHTML = '';
@@ -189,14 +178,14 @@ function showQuestion() {
 
 function startTimer() {
     clearInterval(timer);
-    timeLeft = 30; // 制限時間
+    timeLeft = 30;
     document.getElementById('test-timer').innerText = `残り: ${timeLeft}秒`;
     timer = setInterval(() => {
         timeLeft--;
         document.getElementById('test-timer').innerText = `残り: ${timeLeft}秒`;
         if (timeLeft <= 0) {
             clearInterval(timer);
-            answerQuestion(false); // タイムオーバーは不正解扱い
+            answerQuestion(false);
         }
     }, 1000);
 }
