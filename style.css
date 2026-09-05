@@ -50,5 +50,45 @@ input, select {
     background: white; border: 2px solid var(--primary-color); color: var(--primary-color);
     text-align: left; padding: 1rem; transition: all 0.2s;
 }
+
+/* === 復習エリアのスタイル === */
+.review-container {
+    margin: 2rem 0;
+    text-align: left;
+}
+.review-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-left: 5px solid #d9534f; /* 赤い帯 */
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.review-q {
+    font-weight: bold;
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    line-height: 1.5;
+}
+.review-your-ans, .review-correct-ans {
+    margin: 0.3rem 0;
+    font-size: 1rem;
+}
+.wrong-text {
+    color: #d9534f;
+    font-weight: bold;
+}
+.correct-text {
+    color: #28a745;
+    font-weight: bold;
+}
+.perfect-msg {
+    font-size: 1.3rem;
+    color: #28a745;
+    font-weight: bold;
+    text-align: center;
+    margin: 1.5rem 0;
+}
 .option-btn:hover { background: var(--primary-color); color: white; }
 .score-display { font-size: 2rem; font-weight: bold; text-align: center; margin: 2rem 0; color: var(--primary-color); }
