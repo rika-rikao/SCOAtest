@@ -92,3 +92,112 @@ input, select {
 }
 .option-btn:hover { background: var(--primary-color); color: white; }
 .score-display { font-size: 2rem; font-weight: bold; text-align: center; margin: 2rem 0; color: var(--primary-color); }
+
+/* ==========================================
+   モバイル・タブレット向け 画面固定＆回転最適化
+   ========================================== */
+
+/* 全体：勝手なズームやバウンドスクロールを防止 */
+html, body {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* スマホ/タブレット検知時のベース（固定全画面） */
+body.is-mobile {
+    height: 100dvh;
+    overflow: hidden;
+}
+
+body.is-mobile main {
+    padding: 0.5rem;
+    height: calc(100dvh - 65px);
+    box-sizing: border-box;
+}
+
+body.is-mobile #screen-test {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+/* --- ① 縦画面（Portrait）のUI --- */
+@media (orientation: portrait) {
+    .test-body {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow-y: auto; /* 縦長問題の時のみスクロール許可 */
+    }
+    .question-area {
+        flex: 0 0 auto;
+        margin-bottom: 1rem;
+    }
+    .options-container {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* --- ② 横画面（Landscape）のUI --- */
+/* スマホやタブレットを横に向けた時：左右2カラムにしてスクロールを完全撲滅 */
+@media (orientation: landscape) and (max-height: 600px) {
+    header {
+        display: none; /* 横画面時は表示領域を最大化するためヘッダーを非表示 */
+    }
+    body.is-mobile main {
+        height: 100dvh;
+        padding: 0.5rem;
+    }
+    .test-header {
+        margin-bottom: 0.3rem;
+        font-size: 1rem;
+    }
+    
+    /* 左右2分割レイアウト */
+    .test-body {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr; /* 左: 問題文, 右: 選択肢 */
+        gap: 1rem;
+        height: calc(100dvh - 45px);
+    }
+
+    .question-area {
+        overflow-y: auto; /* 問題が長くても左側だけスクロール */
+        padding-right: 0.5rem;
+    }
+
+    #test-question-text {
+        font-size: 0.95rem;
+        margin-top: 0.3rem;
+    }
+
+    /* 選択肢は右側にコンパクトに整列 */
+    .options-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        gap: 0.3rem;
+    }
+
+    .option-btn {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+/* タブレット横画面など、ある程度高さがある場合 */
+@media (orientation: landscape) and (min-height: 601px) {
+    .test-body {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 1.5rem;
+    }
+}
