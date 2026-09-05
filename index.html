@@ -30,7 +30,7 @@
                 </div>
             </section>
 
-            <!-- 問題生成画面 -->
+<!-- 問題生成画面 -->
             <section id="screen-generate" class="screen">
                 <h2>問題の自動生成 (Gemini API)</h2>
                 <div class="form-group">
@@ -42,33 +42,15 @@
                         <option value="英語">英語</option>
                         <option value="常識">常識 (理科・社会)</option>
                     </select>
-                    <button onclick="generateQuestion()" id="gen-btn">問題を生成する</button>
+                    
+                    <label>生成する問題数 (1〜100):</label>
+                    <input type="number" id="gen-count" value="10" min="1" max="100">
+                    
+                    <button onclick="generateBulkQuestions()" id="gen-btn">一括生成して保存する</button>
                 </div>
+                
                 <div id="gen-result" class="hidden">
-                    <p><strong>問題:</strong> <span id="preview-q"></span></p>
-                    <p><strong>正解:</strong> <span id="preview-correct"></span></p>
-                    <p><strong>誤答リスト(10個):</strong> <span id="preview-incorrect"></span></p>
-                    <button onclick="saveQuestionToFirebase()">Firebaseに保存</button>
-                </div>
-            </section>
-
-            <!-- 対策テスト設定画面 -->
-            <section id="screen-practice" class="screen">
-                <h2>SCOA 実践テスト</h2>
-                <p>SCOAはスピードが命です。問題を選択してテストを開始します。</p>
-                <div class="form-group">
-                    <label>出題ジャンル:</label>
-                    <select id="prac-genre">
-                        <option value="all">全ジャンル (本番形式)</option>
-                        <option value="言語">言語</option>
-                        <option value="数理">数理</option>
-                        <option value="論理">論理</option>
-                        <option value="英語">英語</option>
-                        <option value="常識">常識</option>
-                    </select>
-                    <label>出題数:</label>
-                    <input type="number" id="prac-limit" value="10" min="1" max="120">
-                    <button onclick="startTest()">テスト開始 (1問30秒制限)</button>
+                    <p style="white-space: pre-line; font-weight: bold; color: var(--primary-color);" id="gen-log"></p>
                 </div>
             </section>
 
