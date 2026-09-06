@@ -136,7 +136,7 @@ let testQuestions = [];
 let currentIndex = 0;
 let score = 0;
 let timer = null;
-let timeLeft = 30; // 1問30秒
+let timeLeft = 20; // 1問20秒
 let userAnswers = []; // ★ ユーザーの回答記録用
 
 window.startTest = async () => {
