@@ -142,67 +142,74 @@ let timeLeft = 20; // 1問20秒
 let userAnswers = []; // ★ ユーザーの回答記録用
 
 // === テスト実行ロジック（詳細診断機能付き） ===
+// === テスト実行ロジック（直接サーバーからデータを引き抜く確実版） ===
 window.startTest = async () => {
+    const btn = document.querySelector("#screen-practice button");
+    if (btn) {
+        btn.innerText = "問題読み込み中...";
+        btn.disabled = true;
+    }
+
     try {
-        console.log("=== 接続検証テスト開始 ===");
-        console.log("接続先 Project ID:", firebaseConfig.projectId);
+        // Firebaseの内部通信を通さず、直接URLを叩いて問題データを丸ごと取得
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/scoa_questions`;
+        const res = await fetch(url);
 
-        // ★ 検証1: キャッシュを完全に無視してサーバーから直接取得
-const colRef = collection(db, "scoa_questions");
-const snapshot = await getDocs(colRef);
-      
-        console.log("サーバーから取得できた件数:", snapshot.size);
+        if (!res.ok) {
+            throw new Error(`通信エラー (${res.status}): データベースにアクセスできませんでした`);
+        }
 
-        // もしそれでも0件の場合、テストデータを1件送信してみる
-        if (snapshot.empty) {
-            const testDoc = await addDoc(colRef, {
-                genre: "テスト",
-                question: "これは接続テスト用の問題です",
-                correct: "A",
-                incorrect: ["B", "C", "D"],
-                createdAt: new Date().toISOString()
-            });
+        const json = await res.json();
 
-            alert(
-                `【検証結果: アプリから新しいテストデータを送信しました】\n\n` +
-                `作成されたドキュメントID:\n${testDoc.id}\n\n` +
-                `▼今すぐFirebaseコンソールの画面を「F5」で更新してください。\n` +
-                `上記ID (${testDoc.id}) のデータは一覧に現れましたか？`
-            );
+        if (!json.documents || json.documents.length === 0) {
+            alert("Firebaseに問題データが見つかりませんでした。コレクション名が「scoa_questions」か確認してください。");
             return;
         }
 
-        // 正常にデータが取れた場合の処理
-        let allQ = [];
-        snapshot.forEach(doc => allQ.push({ id: doc.id, ...doc.data() }));
+        // 取得したデータをアプリ用に取り出し
+        let allQ = json.documents.map(doc => {
+            const f = doc.fields || {};
+            const incorrectValues = f.incorrect?.arrayValue?.values || [];
+            return {
+                genre: f.genre?.stringValue || "一般",
+                question: f.question?.stringValue || "",
+                correct: f.correct?.stringValue || "",
+                incorrect: incorrectValues.map(v => v.stringValue || "")
+            };
+        });
 
-        alert(`大成功！ サーバーから ${allQ.length}件 の問題を読み込みました！`);
-
+        // ジャンル絞り込み（もし該当がなければ全問から出題）
         const selectedGenre = document.getElementById('prac-genre').value;
         const limitNum = parseInt(document.getElementById('prac-limit').value) || 10;
         
         let filteredQ = allQ;
         if (selectedGenre !== "all") {
-            filteredQ = allQ.filter(q => {
-                const g = String(q.genre || "").trim();
-                return g.includes(selectedGenre) || 
-                       (selectedGenre === "数理" && g.includes("数学")) || 
-                       (selectedGenre === "言語" && g.includes("国語"));
-            });
+            const matched = allQ.filter(q => q.genre.includes(selectedGenre) || (selectedGenre === "数理" && q.genre.includes("数学")) || (selectedGenre === "言語" && q.genre.includes("国語")));
+            if (matched.length > 0) {
+                filteredQ = matched;
+            }
         }
 
+        // シャッフルして出題
         filteredQ.sort(() => Math.random() - 0.5);
         testQuestions = filteredQ.slice(0, limitNum);
         
         currentIndex = 0;
         score = 0;
         userAnswers = [];
+        
+        // 画面をテストに切り替えて出題！
         window.navigate('test');
         showQuestion();
 
     } catch (e) {
-        console.error("検証エラー:", e);
-        alert(`通信エラーが発生しました:\n${e.message}`);
+        console.error(e);
+        alert("問題の読み出しに失敗しました:\n" + e.message);
+    } finally {
+        if (btn) {
+            btn.innerText = "テスト開始 (1問20秒制限)";
+            btn.disabled = false;
+        }
     }
 };
 
