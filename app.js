@@ -139,31 +139,92 @@ let timer = null;
 let timeLeft = 20; // 1問20秒
 let userAnswers = []; // ★ ユーザーの回答記録用
 
+// === テスト実行ロジック（詳細診断機能付き） ===
 window.startTest = async () => {
-    const genre = document.getElementById('prac-genre').value;
-    const limitNum = parseInt(document.getElementById('prac-limit').value);
+    const selectedGenre = document.getElementById('prac-genre').value;
+    const limitNum = parseInt(document.getElementById('prac-limit').value) || 10;
     
-    let qQuery = collection(db, "scoa_questions");
-    if (genre !== "all") {
-        qQuery = query(qQuery, where("genre", "==", genre));
-    }
-    
-    const snapshot = await getDocs(qQuery);
-    let allQ = [];
-    snapshot.forEach(doc => allQ.push(doc.data()));
+    let currentStep = "1. Firestoreへの接続開始";
 
-    if (allQ.length === 0) {
-        return alert("このジャンルの問題がまだFirebaseにありません。先に生成してください。");
-    }
+    try {
+        currentStep = "2. コレクション 'scoa_questions' の読み込み";
+        // まずジャンル条件をつけずに全件取得を試みる
+        const colRef = collection(db, "scoa_questions");
+        const snapshot = await getDocs(colRef);
+        
+        currentStep = "3. ドキュメントの解析";
+        let allQ = [];
+        snapshot.forEach(doc => {
+            allQ.push({ id: doc.id, ...doc.data() });
+        });
 
-    allQ.sort(() => Math.random() - 0.5);
-    testQuestions = allQ.slice(0, limitNum);
-    
-    currentIndex = 0;
-    score = 0;
-    userAnswers = []; // 回答ログをリセット
-    navigate('test');
-    showQuestion();
+        // 【診断①】データがそもそも0件届いていない場合
+        if (allQ.length === 0) {
+            alert(
+                `【診断結果: データが0件です】\n\n` +
+                `Firestoreとの通信には成功しましたが、コレクション「scoa_questions」の中にドキュメントが1件も存在しません。\n\n` +
+                `▼考えられる原因:\n` +
+                `1. Firebaseコンソールでコレクション名が完全に「scoa_questions」になっているか確認してください（大文字やスペルミス、sの有無など）。\n` +
+                `2. app.js の projectId (${firebaseConfig.projectId}) が、データを入れたプロジェクトと一致しているか確認してください。`
+            );
+            return;
+        }
+
+        // 【診断②】ジャンルの絞り込み
+        currentStep = "4. ジャンル一致の判定";
+        let filteredQ = allQ;
+        if (selectedGenre !== "all") {
+            filteredQ = allQ.filter(q => {
+                const g = String(q.genre || "").trim();
+                return g.includes(selectedGenre) || 
+                       (selectedGenre === "数理" && g.includes("数学")) || 
+                       (selectedGenre === "言語" && g.includes("国語"));
+            });
+        }
+
+        // 【診断③】全体にはあるが、選んだジャンルと一致しない場合
+        if (filteredQ.length === 0) {
+            // 保存されているジャンル名をすべて抽出
+            const actualGenres = [...new Set(allQ.map(q => `「${q.genre}」`))].join(', ');
+            alert(
+                `【診断結果: ジャンル名が一致しません】\n\n` +
+                `データベース全体には ${allQ.length}件 の問題が存在しますが、選択された「${selectedGenre}」に該当するものがありません。\n\n` +
+                `▼Firebaseに実際に保存されているジャンル名:\n` +
+                `${actualGenres || '(未設定)'}\n\n` +
+                `※ジャンルを「全ジャンル」にするか、上記の名前に合わせて問題を出題してください。`
+            );
+            return;
+        }
+
+        // 正常に取得できた場合
+        filteredQ.sort(() => Math.random() - 0.5);
+        testQuestions = filteredQ.slice(0, limitNum);
+        
+        currentIndex = 0;
+        score = 0;
+        userAnswers = [];
+        window.navigate('test');
+        showQuestion();
+
+    } catch (e) {
+        console.error("テスト開始エラー詳細:", e);
+
+        // 【診断④】通信エラーや権限エラーの場合
+        let errorDetail = "";
+        if (e.code === "permission-denied") {
+            errorDetail = "【セキュリティルール拒否】\nFirestoreの読み取り権限がありません。\nFirebaseコンソールの「ルール」タブで `allow read, write: if true;` になっているか確認してください。";
+        } else if (e.code === "unavailable") {
+            errorDetail = "【通信不通】\nインターネットに接続されていないか、Firebaseのサーバーに接続できません。";
+        } else {
+            errorDetail = `【エラーコード: ${e.code || '不明'}】\n${e.message}`;
+        }
+
+        alert(
+            `【通信/実行エラーが発生しました】\n\n` +
+            `停止したステップ: ${currentStep}\n\n` +
+            `原因:\n${errorDetail}`
+        );
+    }
 };
 
 function showQuestion() {
