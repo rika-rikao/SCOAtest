@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, getDocsFromServer, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 // === Firebase 初期設定 (自分のプロジェクトの値に書き換えてください) ===
   const firebaseConfig = {
@@ -141,37 +141,44 @@ let userAnswers = []; // ★ ユーザーの回答記録用
 
 // === テスト実行ロジック（詳細診断機能付き） ===
 window.startTest = async () => {
-    const selectedGenre = document.getElementById('prac-genre').value;
-    const limitNum = parseInt(document.getElementById('prac-limit').value) || 10;
-    
-    let currentStep = "1. Firestoreへの接続開始";
-
     try {
-        currentStep = "2. コレクション 'scoa_questions' の読み込み";
-        // まずジャンル条件をつけずに全件取得を試みる
-        const colRef = collection(db, "scoa_questions");
-        const snapshot = await getDocs(colRef);
-        
-        currentStep = "3. ドキュメントの解析";
-        let allQ = [];
-        snapshot.forEach(doc => {
-            allQ.push({ id: doc.id, ...doc.data() });
-        });
+        console.log("=== 接続検証テスト開始 ===");
+        console.log("接続先 Project ID:", firebaseConfig.projectId);
 
-        // 【診断①】データがそもそも0件届いていない場合
-        if (allQ.length === 0) {
+        // ★ 検証1: キャッシュを完全に無視してサーバーから直接取得
+        const colRef = collection(db, "scoa_questions");
+        const snapshot = await getDocsFromServer(colRef);
+
+        console.log("サーバーから取得できた件数:", snapshot.size);
+
+        // もしそれでも0件の場合、テストデータを1件送信してみる
+        if (snapshot.empty) {
+            const testDoc = await addDoc(colRef, {
+                genre: "テスト",
+                question: "これは接続テスト用の問題です",
+                correct: "A",
+                incorrect: ["B", "C", "D"],
+                createdAt: new Date().toISOString()
+            });
+
             alert(
-                `【診断結果: データが0件です】\n\n` +
-                `Firestoreとの通信には成功しましたが、コレクション「scoa_questions」の中にドキュメントが1件も存在しません。\n\n` +
-                `▼考えられる原因:\n` +
-                `1. Firebaseコンソールでコレクション名が完全に「scoa_questions」になっているか確認してください（大文字やスペルミス、sの有無など）。\n` +
-                `2. app.js の projectId (${firebaseConfig.projectId}) が、データを入れたプロジェクトと一致しているか確認してください。`
+                `【検証結果: アプリから新しいテストデータを送信しました】\n\n` +
+                `作成されたドキュメントID:\n${testDoc.id}\n\n` +
+                `▼今すぐFirebaseコンソールの画面を「F5」で更新してください。\n` +
+                `上記ID (${testDoc.id}) のデータは一覧に現れましたか？`
             );
             return;
         }
 
-        // 【診断②】ジャンルの絞り込み
-        currentStep = "4. ジャンル一致の判定";
+        // 正常にデータが取れた場合の処理
+        let allQ = [];
+        snapshot.forEach(doc => allQ.push({ id: doc.id, ...doc.data() }));
+
+        alert(`大成功！ サーバーから ${allQ.length}件 の問題を読み込みました！`);
+
+        const selectedGenre = document.getElementById('prac-genre').value;
+        const limitNum = parseInt(document.getElementById('prac-limit').value) || 10;
+        
         let filteredQ = allQ;
         if (selectedGenre !== "all") {
             filteredQ = allQ.filter(q => {
@@ -182,21 +189,6 @@ window.startTest = async () => {
             });
         }
 
-        // 【診断③】全体にはあるが、選んだジャンルと一致しない場合
-        if (filteredQ.length === 0) {
-            // 保存されているジャンル名をすべて抽出
-            const actualGenres = [...new Set(allQ.map(q => `「${q.genre}」`))].join(', ');
-            alert(
-                `【診断結果: ジャンル名が一致しません】\n\n` +
-                `データベース全体には ${allQ.length}件 の問題が存在しますが、選択された「${selectedGenre}」に該当するものがありません。\n\n` +
-                `▼Firebaseに実際に保存されているジャンル名:\n` +
-                `${actualGenres || '(未設定)'}\n\n` +
-                `※ジャンルを「全ジャンル」にするか、上記の名前に合わせて問題を出題してください。`
-            );
-            return;
-        }
-
-        // 正常に取得できた場合
         filteredQ.sort(() => Math.random() - 0.5);
         testQuestions = filteredQ.slice(0, limitNum);
         
@@ -207,23 +199,8 @@ window.startTest = async () => {
         showQuestion();
 
     } catch (e) {
-        console.error("テスト開始エラー詳細:", e);
-
-        // 【診断④】通信エラーや権限エラーの場合
-        let errorDetail = "";
-        if (e.code === "permission-denied") {
-            errorDetail = "【セキュリティルール拒否】\nFirestoreの読み取り権限がありません。\nFirebaseコンソールの「ルール」タブで `allow read, write: if true;` になっているか確認してください。";
-        } else if (e.code === "unavailable") {
-            errorDetail = "【通信不通】\nインターネットに接続されていないか、Firebaseのサーバーに接続できません。";
-        } else {
-            errorDetail = `【エラーコード: ${e.code || '不明'}】\n${e.message}`;
-        }
-
-        alert(
-            `【通信/実行エラーが発生しました】\n\n` +
-            `停止したステップ: ${currentStep}\n\n` +
-            `原因:\n${errorDetail}`
-        );
+        console.error("検証エラー:", e);
+        alert(`通信エラーが発生しました:\n${e.message}`);
     }
 };
 
