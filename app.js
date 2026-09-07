@@ -198,7 +198,7 @@ function showQuestion() {
 
 function startTimer() {
     clearInterval(timer);
-    timeLeft = 30;
+    timeLeft = 20;
     document.getElementById('test-timer').innerText = `残り: ${timeLeft}秒`;
     timer = setInterval(() => {
         timeLeft--;
