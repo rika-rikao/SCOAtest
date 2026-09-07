@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, getDocsFromServer, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { initializeFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 // === Firebase 初期設定 (自分のプロジェクトの値に書き換えてください) ===
   const firebaseConfig = {
@@ -13,7 +13,9 @@ import { getFirestore, collection, addDoc, getDocs, getDocsFromServer, query, wh
   };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+});
 
 // === グローバル状態 ===
 window.navigate = (screenId) => {
@@ -146,9 +148,9 @@ window.startTest = async () => {
         console.log("接続先 Project ID:", firebaseConfig.projectId);
 
         // ★ 検証1: キャッシュを完全に無視してサーバーから直接取得
-        const colRef = collection(db, "scoa_questions");
-        const snapshot = await getDocsFromServer(colRef);
-
+const colRef = collection(db, "scoa_questions");
+const snapshot = await getDocs(colRef);
+      
         console.log("サーバーから取得できた件数:", snapshot.size);
 
         // もしそれでも0件の場合、テストデータを1件送信してみる
