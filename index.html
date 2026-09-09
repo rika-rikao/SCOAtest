@@ -78,6 +78,14 @@
                     </select>
                     <label>出題数:</label>
                     <input type="number" id="prac-limit" value="10" min="1" max="120">
+                    
+                    <label>制限時間:</label>
+                    <select id="prac-time">
+                        <option value="20">1問 20秒 (スピード強化)</option>
+                        <option value="30">1問 30秒 (本番・標準)</option>
+                        <option value="0">無制限 (時間切れなし)</option>
+                    </select>
+                    
                     <button onclick="startTest()">テスト開始 (1問20秒制限)</button>
                 </div>
             </section>
