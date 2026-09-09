@@ -139,6 +139,7 @@ let currentIndex = 0;
 let score = 0;
 let timer = null;
 let timeLeft = 20; // 1問20秒
+let timeMode = 20; // ★これを追加
 let userAnswers = []; // ★ ユーザーの回答記録用
 
 // === テスト実行ロジック（詳細診断機能付き） ===
@@ -151,6 +152,8 @@ window.startTest = async () => {
     }
 
     try {
+        // ★ 画面から選択された制限時間を取得
+        timeMode = parseInt(document.getElementById('prac-time').value) || 0;
         // Firebaseの内部通信を通さず、直接URLを叩いて問題データを丸ごと取得
         const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/scoa_questions`;
         const res = await fetch(url);
@@ -207,7 +210,7 @@ window.startTest = async () => {
         alert("問題の読み出しに失敗しました:\n" + e.message);
     } finally {
         if (btn) {
-            btn.innerText = "テスト開始 (1問20秒制限)";
+            btn.innerText = "テスト開始"; // 固定テキストに変更
             btn.disabled = false;
         }
     }
@@ -245,14 +248,24 @@ function showQuestion() {
 
 function startTimer() {
     clearInterval(timer);
-    timeLeft = 20;
+    
+    // ★ 無制限モードの場合はタイマーを動かさない
+    if (timeMode === 0) {
+        document.getElementById('test-timer').innerText = `残り: 無制限`;
+        return; 
+    }
+    
+    // 20秒 or 30秒モードの場合
+    timeLeft = timeMode; 
     document.getElementById('test-timer').innerText = `残り: ${timeLeft}秒`;
+    
     timer = setInterval(() => {
         timeLeft--;
         document.getElementById('test-timer').innerText = `残り: ${timeLeft}秒`;
+        
+        // 0秒になったら強制的に時間切れ（不正解）として次の問題へ
         if (timeLeft <= 0) {
             clearInterval(timer);
-            // ★ 時間切れ時は「時間切れ」として記録
             answerQuestion("（時間切れ）", false);
         }
     }, 1000);
